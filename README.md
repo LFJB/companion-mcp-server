@@ -11,38 +11,106 @@ An MCP (Model Context Protocol) server for [Bitfocus Companion](https://bitfocus
 
 ## Installation
 
-```bash
-npm install -g companion-mcp-server
-```
-
-Or run directly with npx:
+No installation required - run directly with npx:
 
 ```bash
 npx companion-mcp-server [companion-url]
 ```
 
-## Usage
-
-### As a CLI
+Or install globally:
 
 ```bash
-# Connect to local Companion instance (default: http://localhost:8889)
-companion-mcp-server
-
-# Connect to a specific URL
-companion-mcp-server http://192.168.1.100:8889
+npm install -g companion-mcp-server
 ```
 
-### With Claude Desktop
+## Configuration
 
-Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+### Claude Desktop
+
+Add to your Claude Desktop configuration:
+
+**macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "companion": {
       "command": "npx",
-      "args": ["companion-mcp-server", "http://localhost:8889"]
+      "args": ["-y", "companion-mcp-server", "http://localhost:8889"]
+    }
+  }
+}
+```
+
+### Claude Code
+
+Add to your Claude Code MCP settings (`~/.claude/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "companion": {
+      "command": "npx",
+      "args": ["-y", "companion-mcp-server", "http://localhost:8889"]
+    }
+  }
+}
+```
+
+Or add to a project-specific `.claude/settings.json` in your project root.
+
+### Cursor
+
+Add to Cursor's MCP configuration (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "companion": {
+      "command": "npx",
+      "args": ["-y", "companion-mcp-server", "http://localhost:8889"]
+    }
+  }
+}
+```
+
+### Windsurf
+
+Add to Windsurf's MCP configuration (`~/.codeium/windsurf/mcp_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "companion": {
+      "command": "npx",
+      "args": ["-y", "companion-mcp-server", "http://localhost:8889"]
+    }
+  }
+}
+```
+
+### Custom Companion URL
+
+Replace `http://localhost:8889` with your Companion instance URL if it's running on a different host or port:
+
+```json
+"args": ["-y", "companion-mcp-server", "http://192.168.1.100:8889"]
+```
+
+### Environment Variable
+
+You can also set the URL via environment variable:
+
+```json
+{
+  "mcpServers": {
+    "companion": {
+      "command": "npx",
+      "args": ["-y", "companion-mcp-server"],
+      "env": {
+        "COMPANION_URL": "http://localhost:8889"
+      }
     }
   }
 }
@@ -51,45 +119,90 @@ Add to your Claude Desktop configuration (`~/Library/Application Support/Claude/
 ## Available Tools
 
 ### Variables
-- `list_variables` - List all variable definitions grouped by connection
-- `search_variables` - Search variables by name/label pattern
-- `get_variable_value` - Get a variable's current value
-- `create_custom_variable` - Create a new custom variable
-- `set_custom_variable` - Set a custom variable's value
+| Tool | Description |
+|------|-------------|
+| `list_variables` | List all variable definitions grouped by connection |
+| `search_variables` | Search variables by name/label pattern |
+| `get_variable_value` | Get a variable's current value |
+| `create_custom_variable` | Create a new custom variable |
+| `set_custom_variable` | Set a custom variable's value |
 
 ### Connections
-- `list_connections` - List all configured connections
-- `list_connection_definitions` - Get action/feedback definitions for a connection
+| Tool | Description |
+|------|-------------|
+| `list_connections` | List all configured connections with IDs and status |
+| `list_connection_definitions` | Get action/feedback definitions for a connection |
 
 ### Pages & Buttons
-- `list_pages` - List all pages with their button grids
-- `create_page` / `remove_page` / `set_page_name` / `move_page` / `clear_page` - Manage pages
-- `get_button` - Get a button's full configuration
-- `create_button` / `delete_button` - Create or delete buttons
-- `update_button` - Update button style, actions, and feedbacks
-- `press_button` - Simulate button press/release
+| Tool | Description |
+|------|-------------|
+| `list_pages` | List all pages with their button grids |
+| `create_page` | Create new page(s) at a position |
+| `remove_page` | Delete a page and all its controls |
+| `set_page_name` | Rename a page |
+| `move_page` | Move a page to a different position |
+| `clear_page` | Reset a page to defaults |
+| `get_button` | Get a button's full configuration |
+| `create_button` | Create a new button at a location |
+| `delete_button` | Delete a button |
+| `update_button` | Update button style, actions, and feedbacks |
+| `press_button` | Simulate button press/release |
 
 ### Triggers
-- `list_triggers` - List all triggers with collection info
-- `list_trigger_collections` - List all trigger collections
-- `get_trigger` - Get a trigger's full configuration
-- `create_trigger` - Create a trigger with optional inline configuration
-- `clone_trigger` - Clone an existing trigger with option overrides
-- `update_trigger` - Update a trigger with multiple operations
-- `batch_update_triggers` - Bulk update multiple triggers
-- `create_trigger_collection` - Create a trigger collection
-- `delete_trigger` - Delete a trigger
+| Tool | Description |
+|------|-------------|
+| `list_triggers` | List all triggers with collection info |
+| `list_trigger_collections` | List all trigger collections |
+| `get_trigger` | Get a trigger's full configuration |
+| `create_trigger` | Create a trigger with optional inline config |
+| `clone_trigger` | Clone an existing trigger with option overrides |
+| `update_trigger` | Update a trigger with multiple operations |
+| `batch_update_triggers` | Bulk update multiple triggers |
+| `create_trigger_collection` | Create a trigger collection |
+| `delete_trigger` | Delete a trigger |
 
 ## Resources
 
-The server also exposes MCP resources:
-- `companion://guide` - Usage guide for the MCP tools
-- `companion://connections` - Summary of configured connections
-- `companion://presets` - Available button presets by connection
+The server exposes MCP resources for quick context:
+
+| Resource | Description |
+|----------|-------------|
+| `companion://guide` | Usage guide for the MCP tools |
+| `companion://connections` | Summary of configured connections |
+| `companion://presets` | Available button presets by connection |
+
+## Examples
+
+### Create a button that switches to camera 1
+
+```
+1. Use list_connections to find your ATEM connection ID
+2. Use list_connection_definitions with that ID to find the "program" action
+3. Use create_button to create a button at page 1, row 0, column 0
+4. Use update_button with set_style (text: "CAM 1") and add_action (the program action with input: 1)
+```
+
+### Clone triggers for multiple cameras
+
+```
+1. Use get_trigger to inspect an existing camera trigger
+2. Use clone_trigger with the source trigger ID, new name, and optionOverrides to change the camera number
+3. Repeat for each camera, or use batch_update_triggers for bulk operations
+```
+
+### Search for tally variables
+
+```
+Use search_variables with query "tally" to find all tally-related variables across connections
+```
 
 ## Development
 
 ```bash
+# Clone the repo
+git clone https://github.com/yannisgu/companion-mcp-server.git
+cd companion-mcp-server
+
 # Install dependencies
 yarn install
 
@@ -99,6 +212,11 @@ yarn dev
 # Build for production
 yarn build:ts
 ```
+
+## Requirements
+
+- Node.js 18+
+- A running [Bitfocus Companion](https://bitfocus.io/companion) instance
 
 ## License
 
