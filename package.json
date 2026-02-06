@@ -1,0 +1,41 @@
+{
+	"name": "companion-mcp-server",
+	"version": "4.3.0",
+	"description": "Standalone MCP server for Bitfocus Companion",
+	"type": "module",
+	"main": "dist/index.js",
+	"bin": {
+		"companion-mcp-server": "dist/index.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build:ts": "tsc --build",
+		"dev": "tsx src/index.ts"
+	},
+	"keywords": [
+		"mcp",
+		"model-context-protocol",
+		"bitfocus",
+		"companion",
+		"streamdeck"
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/yannisgu/companion-mcp-server.git"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.1",
+		"@trpc/client": "^11.8.1",
+		"@trpc/server": "^11.8.1",
+		"ws": "^8.19.0",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@types/ws": "^8.18.1",
+		"tsx": "^4.21.0",
+		"typescript": "~5.9.3"
+	}
+}
