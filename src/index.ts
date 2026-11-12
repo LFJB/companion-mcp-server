@@ -20,7 +20,7 @@ const mcpServer = new McpServer({
 })
 
 registerVariableTools(mcpServer, client, url)
-registerConnectionTools(mcpServer, client)
+registerConnectionTools(mcpServer, client, url)
 registerButtonTools(mcpServer, client)
 registerTriggerTools(mcpServer, client)
 registerResources(mcpServer, client)

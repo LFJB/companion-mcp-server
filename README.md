@@ -12,6 +12,8 @@ An MCP (Model Context Protocol) server for [Bitfocus Companion](https://bitfocus
 >
 > Tested on 5.1.2: list tools, `get_button`, create / style / delete a button, add / update / remove an action, create / read / delete a trigger. Not tested: feedbacks, events, conditions, `press_button`, page tools.
 >
+> **Connection management (REST API, Companion 5.1+)**: `create_connection`, `get_connection_config_fields`, `update_connection`, `delete_connection` use Companion's public REST API (`/api/v2/connections/v1`). Enable it in **Settings > Protocols**, create an API key with the `connections` read + write scopes, and give it to the server through the `COMPANION_API_KEY` env var or the file `~/.companion-api-key` (never commit it). `create_connection` retries the config for up to 20 s while the new module starts. Tested on 5.1.2 with `generic-osc`.
+>
 > Claude Code: `claude mcp add-json -s user companion '{"type":"stdio","command":"node","args":["<path>/dist/index.js","http://127.0.0.1:8000"]}'` (Companion 5.x serves its UI on port 8000 by default).
 >
 > ⚠️ No authentication: the server has the same rights as the Companion admin UI. Do not point it at a show machine during a show.
