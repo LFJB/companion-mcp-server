@@ -22,6 +22,5 @@
 		"declaration": true,
 		"lib": ["es2024"],
 		"types": ["node"]
-	},
-	"references": [{ "path": "../companion" }, { "path": "../shared-lib" }]
+	}
 }

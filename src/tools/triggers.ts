@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { CompanionClient } from '../trpc-client.js'
-import { getInitialData } from '../trpc-client.js'
+import { getInitialData, toExpressionValue } from '../trpc-client.js'
 // Inlined from @companion-app/shared to allow standalone npm publishing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EntityModelType = { Action: 'action' as any, Feedback: 'feedback' as any }
@@ -156,7 +156,7 @@ async function executeOperations(
 								entityLocation: 'trigger_actions',
 								entityId,
 								key,
-								value,
+								value: toExpressionValue(value),
 							})
 						}
 					}
@@ -188,7 +188,7 @@ async function executeOperations(
 								entityLocation: conditionLocation,
 								entityId,
 								key,
-								value,
+								value: toExpressionValue(value),
 							})
 						}
 					}
@@ -217,7 +217,7 @@ async function executeOperations(
 							entityLocation: location,
 							entityId: operation.entityId,
 							key,
-							value,
+							value: toExpressionValue(value),
 						})
 					}
 					results.push({ op: 'update_entity_options', success: true })

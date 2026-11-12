@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { CompanionClient } from '../trpc-client.js'
-import { getInitialData } from '../trpc-client.js'
+import { getInitialData, toExpressionValue } from '../trpc-client.js'
 // Inlined from @companion-app/shared to allow standalone npm publishing
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EntityModelType = { Action: 'action' as any, Feedback: 'feedback' as any }
@@ -30,7 +30,8 @@ async function resolveEntityLocation(
 	entityId: string
 ): Promise<'feedbacks' | { stepId: string; setId: string }> {
 	const data = await getInitialData((observer) => client.controls.watchControl.subscribe({ controlId }, observer))
-	if (data.type !== 'init' || data.config.type !== 'button') {
+	// Companion 5.x buttons are 'button-layered' (4.x: 'button')
+	if (data.type !== 'init' || (data.config.type !== 'button' && data.config.type !== 'button-layered')) {
 		return { stepId: '0', setId: 'down' }
 	}
 
@@ -189,9 +190,10 @@ export function registerButtonTools(server: McpServer, client: CompanionClient):
 			},
 		},
 		async ({ pageNumber, row, column }) => {
-			await client.controls.resetControl.mutate({
-				location: { pageNumber, row, column },
-				newType: 'button',
+			// Companion 5.x: resetControls takes a list of locations, the plain 'button' type is gone
+			await client.controls.resetControls.mutate({
+				locations: [{ pageNumber, row, column }],
+				newType: 'button-layered',
 			})
 			const controlId = await resolveControlId(client, pageNumber, row, column)
 			return { content: [{ type: 'text', text: JSON.stringify({ success: true, controlId }) }] }
@@ -209,8 +211,9 @@ export function registerButtonTools(server: McpServer, client: CompanionClient):
 			},
 		},
 		async ({ pageNumber, row, column }) => {
-			await client.controls.resetControl.mutate({
-				location: { pageNumber, row, column },
+			await client.controls.resetControls.mutate({
+				locations: [{ pageNumber, row, column }],
+				newType: null,
 			})
 			return { content: [{ type: 'text', text: JSON.stringify({ success: true }) }] }
 		}
@@ -262,7 +265,10 @@ Available operations:
 								text: z.string().optional().describe('Button text'),
 								color: z.number().optional().describe('Text color as decimal (e.g., 16777215 for white)'),
 								bgcolor: z.number().optional().describe('Background color as decimal (e.g., 16711680 for red)'),
-								size: z.union([z.string(), z.number()]).optional().describe('Font size'),
+								size: z
+									.union([z.string(), z.number()])
+									.optional()
+									.describe("Text size in percent of the button height (3-200, default 100), or 'auto' for the default"),
 							}),
 							z.object({
 								op: z.literal('add_action'),
@@ -304,12 +310,39 @@ Available operations:
 				try {
 					switch (operation.op) {
 						case 'set_style': {
-							const styleFields: Record<string, unknown> = {}
-							if (operation.text !== undefined) styleFields['text'] = operation.text
-							if (operation.color !== undefined) styleFields['color'] = operation.color
-							if (operation.bgcolor !== undefined) styleFields['bgcolor'] = operation.bgcolor
-							if (operation.size !== undefined) styleFields['size'] = operation.size
-							await client.controls.setStyleFields.mutate({ controlId, styleFields })
+							// Companion 5.x: style is a stack of layers. Text, text color and size go to the first
+							// 'text' layer, bgcolor to the first 'box' layer (defaults: 'text0' and 'box0').
+							const control = await getInitialData((observer) =>
+								client.controls.watchControl.subscribe({ controlId }, observer)
+							)
+							const layers: Array<{ id: string; type: string }> = control?.config?.style?.layers ?? []
+							const textLayer = layers.find((layer) => layer.type === 'text')
+							const boxLayer = layers.find((layer) => layer.type === 'box')
+
+							const textValues: Record<string, unknown> = {}
+							if (operation.text !== undefined) textValues['text'] = toExpressionValue(operation.text)
+							if (operation.color !== undefined) textValues['color'] = toExpressionValue(operation.color)
+							if (operation.size !== undefined) {
+								const size = Number(operation.size)
+								textValues['fontsize'] = toExpressionValue(Number.isFinite(size) ? size : 100)
+							}
+
+							if (Object.keys(textValues).length > 0) {
+								if (!textLayer) throw new Error('Button has no text layer')
+								await client.controls.styles.updateOptions.mutate({
+									controlId,
+									elementId: textLayer.id,
+									values: textValues,
+								})
+							}
+							if (operation.bgcolor !== undefined) {
+								if (!boxLayer) throw new Error('Button has no background (box) layer')
+								await client.controls.styles.updateOptions.mutate({
+									controlId,
+									elementId: boxLayer.id,
+									values: { color: toExpressionValue(operation.bgcolor) },
+								})
+							}
 							results.push({ op: 'set_style', success: true })
 							break
 						}
@@ -330,7 +363,7 @@ Available operations:
 										entityLocation: actionLocation,
 										entityId,
 										key,
-										value,
+										value: toExpressionValue(value),
 									})
 								}
 							}
@@ -357,7 +390,7 @@ Available operations:
 										entityLocation: 'feedbacks',
 										entityId,
 										key,
-										value,
+										value: toExpressionValue(value),
 									})
 								}
 							}
@@ -380,7 +413,7 @@ Available operations:
 									entityLocation,
 									entityId: operation.entityId,
 									key,
-									value,
+									value: toExpressionValue(value),
 								})
 							}
 							results.push({ op: 'update_entity_options', success: true })

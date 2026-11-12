@@ -2,6 +2,20 @@
 
 An MCP (Model Context Protocol) server for [Bitfocus Companion](https://bitfocus.io/companion), enabling AI assistants to control buttons, triggers, variables, and connections.
 
+> **LFJB fork — Companion 5.x.** Upstream targets Companion 4.3 and its button tools fail on 5.x.
+> This fork is tested against **Companion 5.1.2** (Windows, 2026-11-12) and no longer supports 4.x buttons.
+>
+> - `create_button` / `delete_button`: use `controls.resetControls` (list of locations) and the `button-layered` type
+> - `update_button` → `set_style`: writes to the layered style — `text`, `color`, `size` on the first text layer, `bgcolor` on the first box layer. `size` is a percentage of the button height (3–200, default 100)
+> - Entity options (`add_action` / `add_feedback` / `update_entity_options`, buttons and triggers) are sent as `{ value, isExpression: false }`; values already in that shape are passed through, so expressions work too
+> - Builds standalone (`npm install && npm run build:ts`): the Companion router type import was replaced by an untyped client
+>
+> Tested on 5.1.2: list tools, `get_button`, create / style / delete a button, add / update / remove an action, create / read / delete a trigger. Not tested: feedbacks, events, conditions, `press_button`, page tools.
+>
+> Claude Code: `claude mcp add-json -s user companion '{"type":"stdio","command":"node","args":["<path>/dist/index.js","http://127.0.0.1:8000"]}'` (Companion 5.x serves its UI on port 8000 by default).
+>
+> ⚠️ No authentication: the server has the same rights as the Companion admin UI. Do not point it at a show machine during a show.
+
 ## Features
 
 - **Connections**: List connections and their action/feedback definitions

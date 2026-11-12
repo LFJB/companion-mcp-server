@@ -1,8 +1,22 @@
 import { createTRPCClient, createWSClient, wsLink } from '@trpc/client'
-import type { AppRouter } from '../../companion/lib/UI/TRPC.js'
 import WebSocket from 'ws'
 
-export type CompanionClient = ReturnType<typeof createTRPCClient<AppRouter>>
+// Companion's AppRouter type lives in the Companion source tree (companion/lib/UI/TRPC.ts) and
+// cannot be imported in a standalone build, so the client is untyped. Procedures used here were
+// checked against Companion 5.1.2.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type CompanionClient = any
+
+/**
+ * Companion stores entity options (and layered style properties) as { value, isExpression }.
+ * Wrap a plain value; pass through values that are already in that shape.
+ */
+export function toExpressionValue(value: unknown): { value: unknown; isExpression: boolean } {
+	if (value && typeof value === 'object' && 'isExpression' in value && 'value' in value) {
+		return value as { value: unknown; isExpression: boolean }
+	}
+	return { value, isExpression: false }
+}
 
 export function createCompanionClient(url: string): {
 	client: CompanionClient
@@ -10,7 +24,8 @@ export function createCompanionClient(url: string): {
 } {
 	const wsUrl = url.replace(/^http/, 'ws') + '/trpc'
 	const wsClient = createWSClient({ url: wsUrl, WebSocket: WebSocket as never })
-	const client = createTRPCClient<AppRouter>({ links: [wsLink({ client: wsClient })] })
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const client: CompanionClient = createTRPCClient<any>({ links: [wsLink({ client: wsClient })] })
 	return { client, wsClient }
 }
 
