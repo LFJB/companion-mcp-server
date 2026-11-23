@@ -107,15 +107,27 @@ async function executeOperations(
 					break
 				}
 				case 'add_event': {
-					const eventId = await client.controls.events.add.mutate({
+					// Companion 5.x: events.add returns a boolean, not the new event id.
+					// Read the event ids before and after, and report the new one.
+					const readEventIds = async (): Promise<string[]> => {
+						const data = await getInitialData((observer) =>
+							client.controls.watchControl.subscribe({ controlId }, observer)
+						)
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return ((data as any)?.config?.events ?? []).map((e: { id: string }) => e.id)
+					}
+					const before = await readEventIds()
+					const added = await client.controls.events.add.mutate({
 						controlId,
 						eventType: operation.eventType,
 					})
-					results.push({
-						op: 'add_event',
-						success: true,
-						eventId: eventId ? String(eventId) : undefined,
-					})
+					if (!added) {
+						results.push({ op: 'add_event', success: false, error: `Event type "${operation.eventType}" was not added` })
+						break
+					}
+					const after = await readEventIds()
+					const eventId = after.find((id) => !before.includes(id))
+					results.push({ op: 'add_event', success: true, eventId })
 					break
 				}
 				case 'update_event_options': {
@@ -204,7 +216,8 @@ async function executeOperations(
 						controlId,
 						entityLocation: operation.entityLocation ?? 'feedbacks',
 						entityId: operation.entityId,
-						isInverted: operation.isInverted,
+						// Companion 5.x expects { value, isExpression }
+						isInverted: toExpressionValue(operation.isInverted),
 					})
 					results.push({ op: 'set_entity_inverted', success: true })
 					break
@@ -461,12 +474,13 @@ export function registerTriggerTools(server: McpServer, client: CompanionClient)
 
 			// Clone conditions (feedbacks)
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const feedbacks = (sourceConfig.feedbacks ?? []) as Array<{
+			// Companion 5.x stores trigger conditions under `condition`
+			const feedbacks = (sourceConfig.condition ?? sourceConfig.feedbacks ?? []) as Array<{
 				id: string
 				connectionId: string
 				definitionId: string
 				options: Record<string, unknown>
-				isInverted?: boolean
+				isInverted?: boolean | { value: unknown; isExpression: boolean }
 			}>
 			const conditionOps: Operation[] = []
 			const conditionIdMap: Record<string, number> = {} // old id -> index in conditionOps
@@ -498,7 +512,9 @@ export function registerTriggerTools(server: McpServer, client: CompanionClient)
 			const invertOps: Operation[] = []
 			for (let i = 0; i < feedbacks.length; i++) {
 				const fb = feedbacks[i]
-				if (fb.isInverted && conditionResults[i]?.entityId) {
+				// isInverted is { value, isExpression } in Companion 5.x: the object itself is always truthy
+				const inverted = typeof fb.isInverted === 'object' && fb.isInverted !== null ? fb.isInverted.value === true : fb.isInverted === true
+				if (inverted && conditionResults[i]?.entityId) {
 					invertOps.push({
 						op: 'set_entity_inverted',
 						entityId: conditionResults[i].entityId!,
